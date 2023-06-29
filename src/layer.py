@@ -1,7 +1,4 @@
-"""
---- Created by Aashish Prajapati
---- Date: 24/06/2023 
-"""
+
 import dgl.nn as dglnn
 import torch
 import torch.nn as nn

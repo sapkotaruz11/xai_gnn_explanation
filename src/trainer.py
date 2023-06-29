@@ -1,7 +1,4 @@
-"""
---- Created by Aashish Prajapati
---- Date: 24/06/2023 
-"""
+
 import  torch as th
 
 from src.data_loader import get_dataset

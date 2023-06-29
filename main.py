@@ -1,5 +1,5 @@
-from src.explainer import gnn_explainer
-from src.trainer import gnn_trainer
+from src.explainer2 import gnn_explainer
+# from src.trainer import gnn_trainer
 
 
 def get_args():

@@ -1,17 +1,17 @@
-"""
---- Created by Aashish Prajapati
---- Date: 24/06/2023 
-"""
-from dgl.nn.pytorch import HeteroGNNExplainer
+
+# from dgl.nn.pytorch import HeteroGNNExplainer, GNNExplainer
+
 import torch.nn as nn
-from torch_geometric.explain import fidelity, groundtruth_metrics
+from dgl.nn.pytorch import HeteroGNNExplainer
+from matplotlib import pyplot as plt
+from torch_geometric.explain import GNNExplainer
 
 from src.trainer import gnn_trainer
 import torch as th
 
 
 def explain_model(gnn_model, graph):
-    explainer = HeteroGNNExplainer(gnn_model, num_hops=1, num_epochs=100)
+    explainer = GNNExplainer(gnn_model, num_hops=1, num_epochs=10)
     embeds = nn.ParameterDict()
     for ntype in graph.ntypes:
         embed = nn.Parameter(th.Tensor(graph.num_nodes(ntype), 16))
@@ -21,10 +21,12 @@ def explain_model(gnn_model, graph):
     # graph.ndata['h'] = embeds
     feat = graph.ndata['h']
     explanation = explainer.explain_graph(graph=graph, feat=feat, **{'explain_node': False})
+
     feat_mask, edge_mask = explanation
+
     # metrics = groundtruth_metrics()
-    # fidel = fidelity(explainer, explanation)
-    # print(fidel)
+    # # fidel = fidelity(explainer, explanation)
+    # # print(fidel)
 
     print("EXPLAIN GRAPH FEAT MASK", feat_mask)
     print("EXPLAIN GRAPH EDGE MASK", edge_mask)
@@ -36,6 +38,10 @@ def explain_model(gnn_model, graph):
     # print("EXPLAIN NODES SG", sg)
     # print("EXPLAIN NODES featmask", feat_mask)
     # print("EXPLAIN NODES Edge mask", edge_mask)
+    #
+    # explanation.visualize_feature_importance(top_k=10)
+    #
+    # explanation.visualize_graph()
 
 
 def gnn_explainer(args):

@@ -1,17 +1,21 @@
-"""
---- Created by Aashish Prajapati
---- Date: 24/06/2023 
-"""
+
 import dgl
 import torch as th
+import torch_geometric.datasets
 
 
 def get_dataset(args):
     if args.dataset_name == "mutag":
-        dataset = dgl.data.rdf.MUTAGDataset()
+        # dataset = dgl.data.rdf.MUTAGDataset()
+        dataset = torch_geometric.datasets.Entities(root=".",name="Mutag")
+
     else:
         raise Exception("Dataset undefined")
     g = dataset[0]
+    print(g)
+    g_homo = dgl.to_homogeneous(g)
+
+
     category = dataset.predict_category
     num_classes = dataset.num_classes
     train_mask = g.nodes[category].data.pop("train_mask")
