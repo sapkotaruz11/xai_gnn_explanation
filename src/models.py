@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from src.layer import RelGraphConvLayer
 
 
-class EntityClassify(nn.Module):
+class NodeClassifier(nn.Module):
     def __init__(
             self,
             g,
@@ -18,7 +18,7 @@ class EntityClassify(nn.Module):
             dropout=0,
             use_self_loop=False,
     ):
-        super(EntityClassify, self).__init__()
+        super(NodeClassifier, self).__init__()
         self.g = g
         self.h_dim = h_dim
         self.out_dim = out_dim
@@ -76,53 +76,13 @@ class EntityClassify(nn.Module):
             )
         )
 
-    def forward(self, graph=None, feat=None,h=None, blocks=None,eweight =None,explain_node=False):
-        if h is None:
-            # full graph training
-            # h = self.embeds
-            h = feat
-        blocks = None
-        if blocks is None:
-            # full graph training
-            for layer in self.layers:
-                h = layer(graph, h)
-        else:
-            # minibatch training
-            for layer, block in zip(self.layers, blocks):
-                h = layer(block, h)
+    def forward(self, *args, **kwargs):
+        g = kwargs.get("graph",self.g)
+        h = kwargs.get("feat",self.embeds)
+        # full graph training
+        for layer in self.layers:
+            h = layer(g, h)
 
-        if not self.training and not explain_node:
+        if not self.training and not kwargs.get('explain_node',False):
             return h['d']
         return h
-
-import dgl.function as fn
-import dgl
-
-class Model(nn.Module):
-    def __init__(self, in_dim, num_classes, canonical_etypes):
-        super(Model, self).__init__()
-        self.etype_weights = nn.ModuleDict({
-            '_'.join(c_etype): nn.Linear(in_dim, num_classes)
-            for c_etype in canonical_etypes
-        })
-
-    def forward(self, graph, feat, eweight=None):
-        with graph.local_scope():
-            c_etype_func_dict = {}
-            for c_etype in graph.canonical_etypes:
-                src_type, etype, dst_type = c_etype
-                wh = self.etype_weights['_'.join(c_etype)](feat[src_type])
-                graph.nodes[src_type].data[f'h_{c_etype}'] = wh
-                if eweight is None:
-                    c_etype_func_dict[c_etype] = (fn.copy_u(f'h_{c_etype}', 'm'),
-                        fn.mean('m', 'h'))
-                else:
-                    graph.edges[c_etype].data['w'] = eweight[c_etype]
-                    c_etype_func_dict[c_etype] = (
-                        fn.u_mul_e(f'h_{c_etype}', 'w', 'm'), fn.mean('m', 'h'))
-            graph.multi_update_all(c_etype_func_dict, 'sum')
-            hg = 0
-            for ntype in graph.ntypes:
-                if graph.num_nodes(ntype):
-                    hg = hg + dgl.mean_nodes(graph, 'h', ntype=ntype)
-            return hg

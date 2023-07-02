@@ -2,7 +2,7 @@
 import  torch as th
 
 from src.data_loader import get_dataset
-from src.models import EntityClassify
+from src.models import NodeClassifier
 import torch.nn.functional as F
 
 
@@ -10,6 +10,7 @@ import torch.nn.functional as F
 def gnn_trainer(args):
     g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category = get_dataset(
         args)
+
 
     n_hidden = args.n_hidden
     num_bases = -1
@@ -20,7 +21,7 @@ def gnn_trainer(args):
     l2norm = 5e-4
     n_epochs = args.n_epochs
 
-    gnn_model = EntityClassify(
+    gnn_model = NodeClassifier(
         g,
         n_hidden,
         num_classes,
@@ -41,7 +42,7 @@ def gnn_trainer(args):
         gnn_model.train()
         for epoch in range(n_epochs):
             optimizer.zero_grad()
-            logits = gnn_model(graph=g,feat=feat )[category]
+            logits = gnn_model()[category]
             loss = F.cross_entropy(logits[train_idx], labels[train_idx])
             loss.backward()
             optimizer.step()

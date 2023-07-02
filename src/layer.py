@@ -1,4 +1,4 @@
-
+# Imported from the implementation based on the paper : Link
 import dgl.nn as dglnn
 import torch
 import torch.nn as nn
