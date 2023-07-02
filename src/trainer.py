@@ -1,16 +1,13 @@
-
-import  torch as th
+import torch as th
 
 from src.data_loader import get_dataset
 from src.models import NodeClassifier
 import torch.nn.functional as F
 
 
-
 def gnn_trainer(args):
     g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category = get_dataset(
         args)
-
 
     n_hidden = args.n_hidden
     num_bases = -1
@@ -32,8 +29,8 @@ def gnn_trainer(args):
     )
     feat = gnn_model.embeds
     optimizer = th.optim.Adam(
-            gnn_model.parameters(), lr=lr, weight_decay=l2norm
-        )
+        gnn_model.parameters(), lr=lr, weight_decay=l2norm
+    )
 
     if args.mode == 'train':
         print("start training...")
@@ -65,5 +62,4 @@ def gnn_trainer(args):
                     val_loss.item(),
                 )
             )
-    return gnn_model , g
-
+    return gnn_model, g

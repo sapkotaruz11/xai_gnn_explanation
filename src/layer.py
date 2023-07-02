@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch as th
 
 
-
 class RelGraphConvLayer(nn.Module):
     r"""Relational graph convolution layer.
 
@@ -32,17 +31,17 @@ class RelGraphConvLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        in_feat,
-        out_feat,
-        rel_names,
-        num_bases,
-        *,
-        weight=True,
-        bias=True,
-        activation=None,
-        self_loop=False,
-        dropout=0.0
+            self,
+            in_feat,
+            out_feat,
+            rel_names,
+            num_bases,
+            *,
+            weight=True,
+            bias=True,
+            activation=None,
+            self_loop=False,
+            dropout=0.0
     ):
         super(RelGraphConvLayer, self).__init__()
         self.in_feat = in_feat

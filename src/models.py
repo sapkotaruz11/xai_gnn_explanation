@@ -1,5 +1,3 @@
-
-
 import torch.nn as nn
 import torch as th
 import torch.nn.functional as F
@@ -77,12 +75,12 @@ class NodeClassifier(nn.Module):
         )
 
     def forward(self, *args, **kwargs):
-        g = kwargs.get("graph",self.g)
-        h = kwargs.get("feat",self.embeds)
+        g = kwargs.get("graph", self.g)
+        h = kwargs.get("feat", self.embeds)
         # full graph training
         for layer in self.layers:
             h = layer(g, h)
 
-        if not self.training and not kwargs.get('explain_node',False):
+        if not self.training and not kwargs.get('explain_node', False):
             return h['d']
         return h
