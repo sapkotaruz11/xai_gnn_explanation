@@ -1,3 +1,5 @@
-torch
 dgl
-rdf2lib
+torch
+torch-geometric
+matplotlib
+rdflib
