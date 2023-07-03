@@ -28,9 +28,11 @@ def gnn_trainer(args):
     lr = args.lr
     l2norm = 5e-4
     n_epochs = args.n_epochs
+    input_dim = n_hidden
 
     gnn_model = NodeClassifier(
         g,
+        input_dim,
         n_hidden,
         num_classes,
         num_bases,
@@ -73,4 +75,5 @@ def gnn_trainer(args):
                     val_loss.item(),
                 )
             )
+
     return gnn_model, g

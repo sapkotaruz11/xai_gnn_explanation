@@ -1,9 +1,10 @@
+import os.path
 import random
 
 import dgl
 import torch.nn as nn
-from dgl.nn.pytorch import HeteroGNNExplainer
 
+from src.dglnn_local.gnnexplainer import HeteroGNNExplainer
 from src.trainer import gnn_trainer
 import torch as th
 import dgl.data
@@ -119,6 +120,7 @@ def explain_model(gnn_model, graph):
     """
     explainer = HeteroGNNExplainer(gnn_model, num_hops=1, num_epochs=10)
     embeds = nn.ParameterDict()
+    # Generate Node features
     for ntype in graph.ntypes:
         embed = nn.Parameter(th.Tensor(graph.num_nodes(ntype), 16))
         nn.init.xavier_uniform_(embed, gain=nn.init.calculate_gain("relu"))
@@ -137,6 +139,10 @@ def explain_model(gnn_model, graph):
     print()
     print()
     # Explain NODE SECTION
+    output_dir = "data"
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     store_dict = {}
     for idx in range(1, 10):
         i = random.randint(1, 9500)
@@ -165,20 +171,21 @@ def explain_model(gnn_model, graph):
 
         pos = nx.spring_layout(G)
         nx.draw_networkx(G, pos=pos, node_color=node_colors, edge_color=edge_colors, with_labels=True)
-        plt.savefig("data/path_{}.png".format(i))
-        plt.show()
+        plt.savefig("{}/path_{}.png".format(output_dir,i))
+        # plt.show()
         store_dict[i] = {'feat_mask': feat_mask, 'edge_mask': edge_mask, "sub_graph": sg, "sub_graph_nodes": node_dict,
                          "sub_graph_edge": edge_dict, "combination": combination, 'graph_feat_mask': graph_feat_mask,
                          'graph_edge_mask': graph_edge_mask}
 
         print(store_dict)
 
-    # json_object = json.dumps(store_dict, indent=4
-    # with open("data/explanation.json", "w") as outfile:
-    #     json.dump(store_dict, outfile)
-    th.save(store_dict, 'data/explanation.pt')
+    th.save(store_dict, '{}/explanation.pt'.format(output_dir))
 
 
 def gnn_explainer(args):
     gnn_model, graph = gnn_trainer(args)
     explain_model(gnn_model, graph)
+
+
+def load_pt(file_path):
+    return th.load(file_path)

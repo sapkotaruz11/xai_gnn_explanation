@@ -9,6 +9,7 @@ class NodeClassifier(nn.Module):
     def __init__(
             self,
             g,
+            input_dim,
             h_dim,
             out_dim,
             num_bases,
@@ -49,6 +50,7 @@ class NodeClassifier(nn.Module):
         self.num_hidden_layers = num_hidden_layers
         self.dropout = dropout
         self.use_self_loop = use_self_loop
+        self.input_dim = input_dim
 
         # create weight embeddings for each node for each relation
         self.embeds = nn.ParameterDict()
@@ -61,7 +63,7 @@ class NodeClassifier(nn.Module):
         # i2h
         self.layers.append(
             RelGraphConvLayer(
-                self.h_dim,
+                self.input_dim,
                 self.h_dim,
                 self.rel_names,
                 num_bases=self.num_bases,
