@@ -3,6 +3,21 @@ from src.explainer import gnn_explainer
 
 
 def get_args():
+    '''
+    Parses the command-line arguments using parser.parse_args(), which returns an args object containing the parsed arguments.
+    
+    Arguments include:
+    dataset_name(str):         Specifies the dataset name (default: 'mutag').
+    n_epochs(int):             Specifies the number of epochs for training (default: 100).
+    lr(float):                 Specifies the learning rate for the optimizer (default: 0.01).
+    dropout(float):            Specifies the dropout rate for regularization (default: 0.3).
+    n_hidden(int):             Specifies the number of hidden units in the model (default: 16).
+    num_hidden_layers(int):    Specifies the number of hidden layers in the model (default: 3).
+    mode(str):                 Specifies the mode of operation (default: 'train').
+    explain(bool):             Specifies whether to enable explanation of node classification (default: True).
+
+    Returns the args object.'''
+    
     import argparse
 
     parser = argparse.ArgumentParser(description="Main Arguments")
@@ -12,7 +27,7 @@ def get_args():
         '-n', '--dataset_name', default='mutag', type=str, required=False,
         help='mutag')
     parser.add_argument(
-        '-e', '--n_epochs', default=100, type=int, required=False)
+        '-e', '--n_epochs', default=10, type=int, required=False)
     parser.add_argument(
         '-lr', '--lr', default=0.01, type=float, required=False)
     parser.add_argument(

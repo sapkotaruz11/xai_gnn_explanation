@@ -4,6 +4,37 @@ import torch_geometric.datasets
 
 
 def get_dataset(args):
+    """Retrieve and preprocess the dataset based on the provided arguments.
+
+    Parameters:
+    -----------
+    args : argparse.Namespace
+        Arguments specifying the dataset to retrieve.
+
+    Returns:
+    --------
+    g : dgl.DGLGraph
+        The preprocessed graph dataset.
+    num_classes : int
+        The number of classes in the dataset.
+    train_mask : torch.Tensor
+        Mask indicating the training nodes.
+    test_mask : torch.Tensor
+        Mask indicating the testing nodes.
+    train_idx : torch.Tensor
+        Indices of the training nodes.
+    val_idx : torch.Tensor
+        Indices of the validation nodes.
+    test_idx : torch.Tensor
+        Indices of the testing nodes.
+    labels : torch.Tensor
+        Labels of the nodes in the dataset.
+    category_id : int
+        ID of the category node type.
+    category : str
+        Name of the category node type.
+    """
+    
     if args.dataset_name == "mutag":
         dataset = dgl.data.rdf.MUTAGDataset()
     else:

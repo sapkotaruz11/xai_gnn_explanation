@@ -6,6 +6,17 @@ import torch.nn.functional as F
 
 
 def gnn_trainer(args):
+    """
+    Train a Graph Neural Network (GNN) model for node classification.
+
+    Parameters:
+    - args: An object containing the training arguments and configuration.
+
+    Returns:
+    - gnn_model: The trained GNN model.
+    - g: The input graph used for training.
+
+    """
     g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category = get_dataset(
         args)
 

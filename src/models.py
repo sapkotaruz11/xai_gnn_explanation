@@ -16,6 +16,27 @@ class NodeClassifier(nn.Module):
             dropout=0,
             use_self_loop=False,
     ):
+        """
+        Node classifier module for graph-based node classification.
+
+        Parameters:
+        -----------
+        g : dgl.DGLGraph
+            Input graph.
+        h_dim : int
+            Dimensionality of the input node features and hidden node features.
+        out_dim : int
+            Dimensionality of the output node features (final prediction).
+        num_bases : int
+            Number of bases for the weight matrix parameterization in RelGraphConvLayer.
+        num_hidden_layers : int, optional
+            Number of hidden layers in the model. Default is 1.
+        dropout : float, optional
+            Dropout rate applied to the node features during training. Default is 0.
+        use_self_loop : bool, optional
+            Flag indicating whether to include self-loop messages during message passing. Default is False.
+        """
+        
         super(NodeClassifier, self).__init__()
         self.g = g
         self.h_dim = h_dim

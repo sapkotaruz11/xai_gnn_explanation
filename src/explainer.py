@@ -12,6 +12,17 @@ import networkx as nx
 
 
 def flatten_list(input_list, flattened_list):
+    """
+    Flatten a nested list.
+
+    Parameters:
+    - input_list: The nested list to be flattened.
+    - flattened_list: The list to store the flattened elements.
+
+    Returns:
+    - flattened_list: The flattened list.
+
+    """
     for sublist in input_list:
         if isinstance(sublist, list):
             flattened_list = flatten_list(sublist, flattened_list)
@@ -21,6 +32,16 @@ def flatten_list(input_list, flattened_list):
 
 
 def get_combination_matrix(edge_dict):
+    """
+    Create a combination matrix based on the given edge dictionary.
+
+    Parameters:
+    - edge_dict: A dictionary containing the edges in the form of (source, predicate, target).
+
+    Returns:
+    - matrixs: A dictionary representing the combination matrix.
+
+    """
     import numpy as np
     sources = set()
     destinations = set()
@@ -49,6 +70,17 @@ def get_combination_matrix(edge_dict):
 
 
 def get_mapping(sg):
+    """
+    Generate node and edge mappings for the given subgraph.
+
+    Parameters:
+    - sg: The subgraph.
+
+    Returns:
+    - numer_dict: A dictionary mapping node types to their corresponding node indices.
+    - etype_dict: A dictionary mapping edge types to their corresponding edge indices.
+
+    """
     etype_dict = {}
     # Add edge indices to the HeteroData object
     numer_dict = {}
@@ -74,6 +106,17 @@ def get_mapping(sg):
 
 
 def explain_model(gnn_model, graph):
+    """
+    Explain the GNN model's behavior on the given graph.
+
+    Parameters:
+    - gnn_model: The trained GNN model.
+    - graph: The input graph.
+
+    Returns:
+    - None
+
+    """
     explainer = HeteroGNNExplainer(gnn_model, num_hops=1, num_epochs=10)
     embeds = nn.ParameterDict()
     for ntype in graph.ntypes:
