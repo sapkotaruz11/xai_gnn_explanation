@@ -1,10 +1,15 @@
-import torch as th
+import os
+import time
 
-from src.models import NodeClassifier
+import numpy as np
+import torch as th
+from dgl.data import MUTAGDataset
+
+from src.models import EntityClassify_HeteroAPI
 import torch.nn.functional as F
 
 
-def gnn_trainer(g, num_classes, train_idx, val_idx,category,labels, args):
+def gnn_trainer(args):
     """
     Train a Graph Neural Network (GNN) model for node classification.
 
@@ -18,58 +23,97 @@ def gnn_trainer(g, num_classes, train_idx, val_idx,category,labels, args):
     """
 
 
-    n_hidden = args.n_hidden
-    num_bases = -1
-    dropout = args.dropout
-    num_hidden_layers = args.num_hidden_layers
-    use_self_loop = False
-    lr = args.lr
-    l2norm = 5e-4
-    n_epochs = args.n_epochs
-    input_dim = n_hidden
+    if args.dataset == "mutag":
+        dataset = MUTAGDataset()
+    else:
+        raise Exception ("Dataset not supported")
 
-    gnn_model = NodeClassifier(
+    g = dataset[0]
+    category = dataset.predict_category
+    num_classes = dataset.num_classes
+    train_mask = g.nodes[category].data.pop("train_mask")
+    test_mask = g.nodes[category].data.pop("test_mask")
+    train_idx = th.nonzero(train_mask, as_tuple=False).squeeze()
+    test_idx = th.nonzero(test_mask, as_tuple=False).squeeze()
+    labels = g.nodes[category].data.pop("labels")
+    category_id = len(g.ntypes)
+    for i, ntype in enumerate(g.ntypes):
+        if ntype == category:
+            category_id = i
+
+    # split dataset into train, validate, test
+    if args.validation:
+        val_idx = train_idx[: len(train_idx) // 5]
+        train_idx = train_idx[len(train_idx) // 5:]
+    else:
+        val_idx = train_idx
+
+    # check cuda
+    use_cuda = args.gpu >= 0 and th.cuda.is_available()
+    if use_cuda:
+        th.cuda.set_device(args.gpu)
+        g = g.to("cuda:%d" % args.gpu)
+        labels = labels.cuda()
+        train_idx = train_idx.cuda()
+        test_idx = test_idx.cuda()
+
+    # create model
+    model = EntityClassify_HeteroAPI(
         g,
-        input_dim,
-        n_hidden,
+        args.n_hidden,
         num_classes,
-        num_bases,
-        num_hidden_layers,
-        dropout,
-        use_self_loop,
-    )
-    optimizer = th.optim.Adam(
-        gnn_model.parameters(), lr=lr, weight_decay=l2norm
+        num_bases=args.n_bases,
+        num_hidden_layers=args.n_layers - 2,
+        dropout=args.dropout,
+        use_self_loop=args.use_self_loop,
+        category=category
     )
 
-    if args.mode == 'train':
-        print("start training...")
-        losses = []
-        gnn_model.train()
-        for epoch in range(n_epochs):
+    if use_cuda:
+        model.cuda()
+
+    # optimizer
+    optimizer = th.optim.Adam(
+        model.parameters(), lr=args.lr, weight_decay=args.l2norm
+    )
+
+    # training loop
+    print("start training...")
+    dur = []
+    if os.path.exists(args.model_path):
+        model.load_state_dict(th.load(args.model_path))
+    else:
+        model.train()
+        for epoch in range(args.n_epochs):
             optimizer.zero_grad()
-            logits = gnn_model()[category]
+            t0 = time.time()
+            logits = model()[category]
             loss = F.cross_entropy(logits[train_idx], labels[train_idx])
             loss.backward()
             optimizer.step()
+            t1 = time.time()
 
+            dur.append(t1 - t0)
             train_acc = th.sum(
                 logits[train_idx].argmax(dim=1) == labels[train_idx]
             ).item() / len(train_idx)
-
             val_loss = F.cross_entropy(logits[val_idx], labels[val_idx])
             val_acc = th.sum(
                 logits[val_idx].argmax(dim=1) == labels[val_idx]
             ).item() / len(val_idx)
-            losses.append(loss)
             print(
-                "Epoch {:05d} | Train Acc: {:.4f} | Train Loss: {:.4f} | Valid Acc: {:.4f} | Valid loss: {:.4f} ".format(
+                "Epoch {:05d} | Train Acc: {:.4f} | Train Loss: {:.4f} | Valid Acc: {:.4f} | Valid loss: {:.4f} | Time: {:.4f}".format(
                     epoch,
                     train_acc,
                     loss.item(),
                     val_acc,
                     val_loss.item(),
+                    np.average(dur),
                 )
             )
+        print()
+        if args.model_path is not None:
+            th.save(model.state_dict(), args.model_path)
 
-    return gnn_model
+
+    return model, g, test_idx, labels, category

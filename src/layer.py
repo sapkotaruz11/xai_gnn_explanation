@@ -1,11 +1,16 @@
-# Imported from the implementation based on the paper : Link
+"""RGCN layer implementation"""
+from collections import defaultdict
+
+import dgl
+import dgl.function as fn
 import dgl.nn as dglnn
-import torch
-import torch.nn as nn
+
 import torch as th
+import torch.nn as nn
+import torch.nn.functional as F
+import tqdm
 
-
-class RelGraphConvLayer(nn.Module):
+class RelGraphConvLayerHeteroAPI(nn.Module):
     r"""Relational graph convolution layer.
 
     Parameters
@@ -31,19 +36,19 @@ class RelGraphConvLayer(nn.Module):
     """
 
     def __init__(
-            self,
-            in_feat,
-            out_feat,
-            rel_names,
-            num_bases,
-            *,
-            weight=True,
-            bias=True,
-            activation=None,
-            self_loop=False,
-            dropout=0.0
+        self,
+        in_feat,
+        out_feat,
+        rel_names,
+        num_bases,
+        *,
+        weight=True,
+        bias=True,
+        activation=None,
+        self_loop=False,
+        dropout=0.0
     ):
-        super(RelGraphConvLayer, self).__init__()
+        super(RelGraphConvLayerHeteroAPI, self).__init__()
         self.in_feat = in_feat
         self.out_feat = out_feat
         self.rel_names = rel_names
@@ -51,15 +56,6 @@ class RelGraphConvLayer(nn.Module):
         self.bias = bias
         self.activation = activation
         self.self_loop = self_loop
-
-        self.conv = dglnn.HeteroGraphConv(
-            {
-                rel: dglnn.GraphConv(
-                    in_feat, out_feat, norm="right", weight=False, bias=False
-                )
-                for rel in rel_names
-            }
-        )
 
         self.use_weight = weight
         self.use_basis = num_bases < len(self.rel_names) and weight
@@ -115,17 +111,26 @@ class RelGraphConvLayer(nn.Module):
         else:
             wdict = {}
 
-        if g.is_block:
-            inputs_src = inputs
-            inputs_dst = {
-                k: v[: g.number_of_dst_nodes(k)] for k, v in inputs.items()
-            }
+        inputs_src = inputs_dst = inputs
+
+        for srctype, _, _ in g.canonical_etypes:
+            g.nodes[srctype].data["h"] = inputs[srctype]
+
+        if self.use_weight:
+            g.apply_edges(fn.copy_u("h", "m"))
+            m = g.edata["m"]
+            for rel in g.canonical_etypes:
+                _, etype, _ = rel
+                g.edges[rel].data["h*w_r"] = th.matmul(
+                    m[rel], wdict[etype]["weight"]
+                )
         else:
-            inputs_src = inputs_dst = inputs
+            g.apply_edges(fn.copy_u("h", "h*w_r"))
 
-        hs = self.conv(g, inputs, mod_kwargs=wdict)
+        g.update_all(fn.copy_e("h*w_r", "m"), fn.sum("m", "h"))
 
-        def _apply(ntype, h):
+        def _apply(ntype):
+            h = g.nodes[ntype].data["h"]
             if self.self_loop:
                 h = h + th.matmul(inputs_dst[ntype], self.loop_weight)
             if self.bias:
@@ -134,4 +139,4 @@ class RelGraphConvLayer(nn.Module):
                 h = self.activation(h)
             return self.dropout(h)
 
-        return {ntype: _apply(ntype, h) for ntype, h in hs.items()}
+        return {ntype: _apply(ntype) for ntype in g.dsttypes}

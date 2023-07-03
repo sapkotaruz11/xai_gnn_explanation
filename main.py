@@ -1,5 +1,6 @@
 from src.explainer import gnn_explainer
 # from src.trainer import gnn_trainer
+import argparse
 
 
 def get_args():
@@ -17,29 +18,58 @@ def get_args():
     explain(bool):             Specifies whether to enable explanation of node classification (default: True).
 
     Returns the args object.'''
-    
-    import argparse
 
-    parser = argparse.ArgumentParser(description="Main Arguments")
-
-    # model paramteres
+    parser = argparse.ArgumentParser(description="RGCN")
     parser.add_argument(
-        '-n', '--dataset_name', default='mutag', type=str, required=False,
-        help='mutag')
+        "--dropout", type=float, default=0, help="dropout probability"
+    )
     parser.add_argument(
-        '-e', '--n_epochs', default=75, type=int, required=False)
+        "--n-hidden", type=int, default=16, help="number of hidden units"
+    )
+    parser.add_argument("--gpu", type=int, default=-1, help="gpu")
+    parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
     parser.add_argument(
-        '-lr', '--lr', default=0.01, type=float, required=False)
+        "--n-bases",
+        type=int,
+        default=-1,
+        help="number of filter weight matrices, default: -1 [use all]",
+    )
     parser.add_argument(
-        '-d', '--dropout', default=0.3, type=float, required=False)
+        "--n-layers", type=int, default=2, help="number of propagation rounds"
+    )
     parser.add_argument(
-        '-nh', '--n_hidden', default=16, type=int, required=False)
+        "-e",
+        "--n-epochs",
+        type=int,
+        default=50,
+        help="number of training epochs",
+    )
     parser.add_argument(
-        '-nhl', '--num_hidden_layers', default=3, type=int, required=False)
+        "-d", "--dataset", type=str, required=False, help="dataset to use", default="mutag"
+    )
     parser.add_argument(
-        '-m', '--mode', default='train', type=str, required=False)
+        "--model_path", type=str, default='data/saved_model.pt', help="path for save the model"
+    )
     parser.add_argument(
-        '-ex', '--explain', default=True, type=bool, required=False)
+        "--explain_graph", type=bool, default=False, help="Set to True if graph explanation is needed"
+    )
+    parser.add_argument(
+        "--print_metrics", type=bool, default=False, help="Set to True to print evaluation metrics"
+    )
+    parser.add_argument(
+        "--node_index", type=int, default=None, help="Provide node index if a single node index output is expected"
+    )
+    parser.add_argument("--l2norm", type=float, default=0, help="l2 norm coef")
+    parser.add_argument(
+        "--use-self-loop",
+        default=False,
+        action="store_true",
+        help="include self feature as a special relation",
+    )
+    fp = parser.add_mutually_exclusive_group(required=False)
+    fp.add_argument("--validation", dest="validation", action="store_true")
+    fp.add_argument("--testing", dest="validation", action="store_false")
+    parser.set_defaults(validation=True)
 
     args = parser.parse_args()
     return args
@@ -47,5 +77,7 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    gnn_explainer(args)
-
+    try:
+        gnn_explainer(args)
+    except Exception as e:
+        print(e)

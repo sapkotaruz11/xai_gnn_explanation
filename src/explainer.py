@@ -1,11 +1,9 @@
-import os.path
 import random
 
 import dgl
 import torch.nn as nn
 from torch_geometric.explain import groundtruth_metrics
 
-from src.data_loader import get_dataset
 from src.dglnn_local.gnnexplainer import HeteroGNNExplainer
 from src.trainer import gnn_trainer
 import torch as th
@@ -117,105 +115,85 @@ def get_prediction(gnn_model, graph, feat, category, **kwargs):
     return pred_label
 
 
-def explain_model(gnn_model, graph, labels, test_idx):
-    """
-    Explain the GNN model's behavior on the given graph.
 
-    Parameters:
-    - gnn_model: The trained GNN model.
-    - graph: The input graph.
-    - labels: The labels for ground truth
-     - test_idx: The test index to get prediction
 
-    Returns:
-    - None
+def explain_model(model, g, test_idx, labels, category,args):
+    node_index = args.node_index
+    print_metrics = args.print_metrics
 
-    """
-    explainer = HeteroGNNExplainer(gnn_model, num_hops=1, num_epochs=10)
+    explainer = HeteroGNNExplainer(model, num_hops=1, num_epochs=10)
     embeds = nn.ParameterDict()
-    # Generate Node features
-    for ntype in graph.ntypes:
-        embed = nn.Parameter(th.Tensor(graph.num_nodes(ntype), 16))
+    for ntype in g.ntypes:
+        embed = nn.Parameter(th.Tensor(g.num_nodes(ntype), 16))
         nn.init.xavier_uniform_(embed, gain=nn.init.calculate_gain("relu"))
-        graph.nodes[ntype].data['h'] = embed
+        g.nodes[ntype].data['h'] = embed
         embeds[ntype] = embed
     # graph.ndata['h'] = embeds
-    feat = graph.ndata['h']
-    # EXPLAIN GRAPH
-    category = 'd'
-    target_mask = labels[test_idx]
-    prediction = get_prediction(gnn_model, graph, feat, category)
-    prediction_mask = th.tensor(prediction)[test_idx]
-    metric = groundtruth_metrics(pred_mask=prediction_mask, target_mask=target_mask,
-                                 metrics=['accuracy', 'precision', 'recall', 'f1_score'])
-    metrics_dict = {'accuracy': metric[0], 'precision': metric[1], 'recall': metric[2], 'f1_score': metric[3]}
-    print("Metrics:", metrics_dict)
+    feat = g.ndata['h']
+    # # EXPLAIN GRAPH
+    if args.explain_graph:
+        explanation = explainer.explain_graph(g, feat, **{'explain_node': False})
+        graph_feat_mask, graph_edge_mask = explanation
+        print("EXPLAIN GRAPH FEAT MASK", graph_feat_mask)
+        print("EXPLAIN GRAPH EDGE MASK", graph_edge_mask)
 
-    explanation = explainer.explain_graph(graph=graph, feat=feat, **{'explain_node': False})
+    prediction = get_prediction(model, g, feat, category)
+    if print_metrics:
+        target_mask = labels[test_idx]
+        prediction_mask = th.tensor(prediction)[test_idx]
+        metric = groundtruth_metrics(pred_mask=prediction_mask, target_mask=target_mask,
+                                     metrics=['accuracy', 'precision', 'recall', 'f1_score'])
+        metrics_dict = {'accuracy': metric[0], 'precision': metric[1], 'recall': metric[2], 'f1_score': metric[3]}
+        print("Metrics:", metrics_dict)
 
-    graph_feat_mask, graph_edge_mask = explanation
-    #
-    # print("EXPLAIN GRAPH FEAT MASK", graph_feat_mask)
-    # print("EXPLAIN GRAPH EDGE MASK", graph_edge_mask)
-    # print("EXPLAIN GRAPH GRAPH NODES", graph.nodes)
-    print()
-    print()
+
     # Explain NODE SECTION
-    output_dir = "data"
-
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
     store_dict = {}
-    for idx in range(1, 10):
-        i = random.randint(th.min(test_idx), th.max(test_idx))
-        print("Selected node index", i)
-        node_prediction = prediction[i]
-        print("PREDICTION :", node_prediction)
+    if node_index is not None:
+        new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, node_index, g, feat, **{'explain_node': True})
+        print("EXPLAIN NODE FEAT MASK", feat_mask)
+        print("EXPLAIN NODE EDGE MASK", edge_mask)
 
-        new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, i, graph, feat,
-                                                                      **{'explain_node': True})
-        # print("EXPLAIN NODE FEAT MASK", feat_mask)
-        # print("EXPLAIN NODE EDGE MASK", edge_mask)
-        # print("EXPLAIN NODE GRAPH NODES", graph.nodes)
-        print()
+    else:
+        for idx in range(10):
+            i = random.randint(th.min(test_idx), th.max(test_idx))
+            print("Selected node index", i)
+            node_prediction = prediction[i]
+            print("PREDICTION :", node_prediction)
+            new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, i, g, feat, **{'explain_node': True})
+            print("EXPLAIN NODE FEAT MASK", feat_mask)
+            print("EXPLAIN NODE EDGE MASK", edge_mask)
 
-        # Converted to homogenous because networkx doesnt support heterogenous graph
-        sg_homo = dgl.to_homogeneous(sg)
-        G = dgl.to_networkx(sg_homo)
+            # Converted to homogenous because networkx doesn't support heterogenous graph
+            sg_homo = dgl.to_homogeneous(sg)
+            G = dgl.to_networkx(sg_homo)
 
-        # TODO Try to map
-        node_dict, edge_dict = get_mapping(sg)
-        # print("Node dict", node_dict)
-        # print("Edge dict", edge_dict)
-        combination = get_combination_matrix(edge_dict)
-        plt.figure(figsize=[15, 7])
+            # TODO Try to map
+            # node_dict, edge_dict = get_mapping(sg)
+            # print("Node dict", node_dict)
+            # print("Edge dict", edge_dict)
+            # combination = get_combination_matrix(edge_dict)
+            plt.figure(figsize=[15, 7])
 
-        nodes = G.nodes()
-        edges = G.edges()
-        node_colors = ['b' for node in nodes]
-        edge_colors = ['r' if edge in edge_mask else 'b' for edge in edges]
+            nodes = G.nodes()
+            edges = G.edges()
+            node_colors = ['b' for node in nodes]
+            edge_colors = ['r' if edge in edge_mask else 'b' for edge in edges]
 
-        pos = nx.spring_layout(G)
-        nx.draw_networkx(G, pos=pos, node_color=node_colors, edge_color=edge_colors, with_labels=True)
-        plt.savefig("{}/path_{}.png".format(output_dir, i))
-        # plt.show()
-        store_dict[i] = {'prediction': node_prediction, 'feat_mask': feat_mask, 'edge_mask': edge_mask, "sub_graph": sg,
-                         "sub_graph_nodes": node_dict,
-                         "sub_graph_edge": edge_dict, "combination": combination}
-        store_dict['metrics'] = metrics_dict
-        store_dict['graph_feat_mask'] = graph_feat_mask
-        store_dict['graph_edge_mask'] = graph_edge_mask
+            pos = nx.spring_layout(G)
+            nx.draw_networkx(G, pos=pos, node_color=node_colors, edge_color=edge_colors, with_labels=False)
+            plt.savefig("data/path2_{}.png".format(i))
 
 
-    th.save(store_dict, '{}/explanation.pt'.format(output_dir))
+
 
 
 def gnn_explainer(args):
-    g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category = get_dataset(
-        args)
-    gnn_model = gnn_trainer(g, num_classes, train_idx, val_idx, category, labels, args)
-    explain_model(gnn_model, g, labels, test_idx)
+    try:
+        model, g, test_idx, labels, category = gnn_trainer(args)
+        explain_model(model, g, test_idx, labels, category, args)
+    except Exception as e:
+        raise e
 
 
 def load_pt(file_path):
