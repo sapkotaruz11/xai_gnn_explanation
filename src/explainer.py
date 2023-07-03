@@ -208,7 +208,7 @@ def explain_model(model, g, test_idx, labels, category, args):
 
 def gnn_explainer(args):
     try:
-        if os.path.exists("data"):
+        if not os.path.exists("data"):
             os.mkdir("data")
         model, g, test_idx, labels, category = gnn_trainer(args)
         explain_model(model, g, test_idx, labels, category, args)
