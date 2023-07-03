@@ -43,7 +43,7 @@ class RelGraphEmbed(nn.Module):
         return self.embeds
 
 
-class EntityClassify_HeteroAPI(nn.Module):
+class NodeClassifier(nn.Module):
     def __init__(
             self,
             g,
@@ -55,7 +55,7 @@ class EntityClassify_HeteroAPI(nn.Module):
             category='',
             use_self_loop=False,
     ):
-        super(EntityClassify_HeteroAPI, self).__init__()
+        super(NodeClassifier, self).__init__()
         self.g = g
         self.h_dim = h_dim
         self.out_dim = out_dim
@@ -69,10 +69,10 @@ class EntityClassify_HeteroAPI(nn.Module):
         self.dropout = dropout
         self.use_self_loop = use_self_loop
         self.category = category
-
+        # Embedding layer
         self.embed_layer = RelGraphEmbed(g, self.h_dim)
         self.layers = nn.ModuleList()
-        # i2h
+        # input to hidden layer
         self.layers.append(
             RelGraphConvLayerHeteroAPI(
                 self.h_dim,
@@ -85,7 +85,7 @@ class EntityClassify_HeteroAPI(nn.Module):
                 weight=False,
             )
         )
-        # h2h
+        # hidden to hidden layer
         for i in range(self.num_hidden_layers):
             self.layers.append(
                 RelGraphConvLayerHeteroAPI(
@@ -98,7 +98,7 @@ class EntityClassify_HeteroAPI(nn.Module):
                     dropout=self.dropout,
                 )
             )
-        # h2o
+        # hidden to output layer
         self.layers.append(
             RelGraphConvLayerHeteroAPI(
                 self.h_dim,
@@ -111,12 +111,12 @@ class EntityClassify_HeteroAPI(nn.Module):
         )
 
     def forward(self, *args, **kwargs):
+        # Take key word arguments during model explanation
         g = kwargs.get("graph", self.g)
         h = kwargs.get("feat", self.embed_layer())
         if h is None:
-            # full graph training
             h = self.embed_layer()
-            # full graph training
+        # full graph training
         for layer in self.layers:
             h = layer(g, h)
 

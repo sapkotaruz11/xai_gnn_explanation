@@ -1,3 +1,4 @@
+import os
 import random
 
 import dgl
@@ -107,6 +108,21 @@ def get_mapping(sg):
 
 
 def get_prediction(gnn_model, graph, feat, category, **kwargs):
+    """
+        Get the predicted label for a given graph and category using a graph neural network model.
+
+        Parameters:
+            - gnn_model (nn.Module): The graph neural network model used for prediction.
+            - graph (dgl.DGLGraph): The input graph.
+            - feat (torch.Tensor): The input node features.
+            - category (str): The category or task for which the prediction is made.
+            - **kwargs: Additional keyword arguments to be passed to the model.
+
+        Returns:
+            - pred_label (torch.Tensor): The predicted label for the given graph and category.
+
+        """
+    # Set to eval mode to get prediction
     gnn_model.eval()
     with th.no_grad():
         logits = gnn_model(graph=graph, feat=feat, **{'explain_node': True})[category]
@@ -115,29 +131,33 @@ def get_prediction(gnn_model, graph, feat, category, **kwargs):
     return pred_label
 
 
-
-
-def explain_model(model, g, test_idx, labels, category,args):
+def explain_model(model, g, test_idx, labels, category, args):
     node_index = args.node_index
     print_metrics = args.print_metrics
 
+    # Create an explainer object
     explainer = HeteroGNNExplainer(model, num_hops=1, num_epochs=10)
+
+    # Initialize embedding parameters for each node type
     embeds = nn.ParameterDict()
     for ntype in g.ntypes:
         embed = nn.Parameter(th.Tensor(g.num_nodes(ntype), 16))
         nn.init.xavier_uniform_(embed, gain=nn.init.calculate_gain("relu"))
         g.nodes[ntype].data['h'] = embed
         embeds[ntype] = embed
-    # graph.ndata['h'] = embeds
     feat = g.ndata['h']
-    # # EXPLAIN GRAPH
+
+    # Explain the graph if required
     if args.explain_graph:
         explanation = explainer.explain_graph(g, feat, **{'explain_node': False})
         graph_feat_mask, graph_edge_mask = explanation
         print("EXPLAIN GRAPH FEAT MASK", graph_feat_mask)
         print("EXPLAIN GRAPH EDGE MASK", graph_edge_mask)
 
+    # Get the model prediction
     prediction = get_prediction(model, g, feat, category)
+
+    # Print metrics if required
     if print_metrics:
         target_mask = labels[test_idx]
         prediction_mask = th.tensor(prediction)[test_idx]
@@ -146,33 +166,34 @@ def explain_model(model, g, test_idx, labels, category,args):
         metrics_dict = {'accuracy': metric[0], 'precision': metric[1], 'recall': metric[2], 'f1_score': metric[3]}
         print("Metrics:", metrics_dict)
 
-
-    # Explain NODE SECTION
+    # Explain the node section
     store_dict = {}
     if node_index is not None:
-        new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, node_index, g, feat, **{'explain_node': True})
+        new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, node_index, g, feat,
+                                                                      **{'explain_node': True})
         print("EXPLAIN NODE FEAT MASK", feat_mask)
         print("EXPLAIN NODE EDGE MASK", edge_mask)
 
     else:
         for idx in range(10):
+
+            # Randomly select a node index from the test data
             i = random.randint(th.min(test_idx), th.max(test_idx))
             print("Selected node index", i)
             node_prediction = prediction[i]
             print("PREDICTION :", node_prediction)
-            new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, i, g, feat, **{'explain_node': True})
+
+            # Explain the node
+            new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, i, g, feat,
+                                                                          **{'explain_node': True})
             print("EXPLAIN NODE FEAT MASK", feat_mask)
             print("EXPLAIN NODE EDGE MASK", edge_mask)
 
-            # Converted to homogenous because networkx doesn't support heterogenous graph
+            # Convert the subgraph to a homogeneous graph using DGL
             sg_homo = dgl.to_homogeneous(sg)
             G = dgl.to_networkx(sg_homo)
 
-            # TODO Try to map
-            # node_dict, edge_dict = get_mapping(sg)
-            # print("Node dict", node_dict)
-            # print("Edge dict", edge_dict)
-            # combination = get_combination_matrix(edge_dict)
+            # Visualize the subgraph using NetworkX and Matplotlib
             plt.figure(figsize=[15, 7])
 
             nodes = G.nodes()
@@ -185,16 +206,13 @@ def explain_model(model, g, test_idx, labels, category,args):
             plt.savefig("data/path2_{}.png".format(i))
 
 
-
-
-
 def gnn_explainer(args):
     try:
+        if os.path.exists("data"):
+            os.mkdir("data")
         model, g, test_idx, labels, category = gnn_trainer(args)
         explain_model(model, g, test_idx, labels, category, args)
     except Exception as e:
         raise e
 
 
-def load_pt(file_path):
-    return th.load(file_path)

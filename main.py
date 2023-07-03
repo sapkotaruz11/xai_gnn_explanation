@@ -1,5 +1,5 @@
+
 from src.explainer import gnn_explainer
-# from src.trainer import gnn_trainer
 import argparse
 
 
@@ -78,6 +78,7 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
     try:
+
         gnn_explainer(args)
     except Exception as e:
         print(e)

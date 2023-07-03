@@ -5,7 +5,7 @@ import numpy as np
 import torch as th
 from dgl.data import MUTAGDataset
 
-from src.models import EntityClassify_HeteroAPI
+from src.models import NodeClassifier
 import torch.nn.functional as F
 
 
@@ -22,12 +22,12 @@ def gnn_trainer(args):
 
     """
 
-
     if args.dataset == "mutag":
         dataset = MUTAGDataset()
     else:
-        raise Exception ("Dataset not supported")
+        raise Exception("Dataset not supported")
 
+    # Retrieve the input graph, category for prediction, and other information from the dataset
     g = dataset[0]
     category = dataset.predict_category
     num_classes = dataset.num_classes
@@ -41,14 +41,14 @@ def gnn_trainer(args):
         if ntype == category:
             category_id = i
 
-    # split dataset into train, validate, test
+    # # Split dataset into train, validate, and test sets based on the validation flag
     if args.validation:
         val_idx = train_idx[: len(train_idx) // 5]
         train_idx = train_idx[len(train_idx) // 5:]
     else:
         val_idx = train_idx
 
-    # check cuda
+    # Check CUDA availability and move tensors to GPU if specified
     use_cuda = args.gpu >= 0 and th.cuda.is_available()
     if use_cuda:
         th.cuda.set_device(args.gpu)
@@ -57,8 +57,8 @@ def gnn_trainer(args):
         train_idx = train_idx.cuda()
         test_idx = test_idx.cuda()
 
-    # create model
-    model = EntityClassify_HeteroAPI(
+    # Create the GNN model
+    model = NodeClassifier(
         g,
         args.n_hidden,
         num_classes,
@@ -72,12 +72,12 @@ def gnn_trainer(args):
     if use_cuda:
         model.cuda()
 
-    # optimizer
+    # Define the optimizer
     optimizer = th.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.l2norm
     )
 
-    # training loop
+    # Training loop
     print("start training...")
     dur = []
     if os.path.exists(args.model_path):
@@ -114,6 +114,5 @@ def gnn_trainer(args):
         print()
         if args.model_path is not None:
             th.save(model.state_dict(), args.model_path)
-
 
     return model, g, test_idx, labels, category
