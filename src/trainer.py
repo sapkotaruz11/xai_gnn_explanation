@@ -1,6 +1,5 @@
 import torch as th
 
-from src.data_loader import get_dataset
 from src.models import NodeClassifier
 import torch.nn.functional as F
 
@@ -39,14 +38,12 @@ def gnn_trainer(g, num_classes, train_idx, val_idx,category,labels, args):
         dropout,
         use_self_loop,
     )
-    feat = gnn_model.embeds
     optimizer = th.optim.Adam(
         gnn_model.parameters(), lr=lr, weight_decay=l2norm
     )
 
     if args.mode == 'train':
         print("start training...")
-        dur = []
         losses = []
         gnn_model.train()
         for epoch in range(n_epochs):

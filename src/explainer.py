@@ -124,6 +124,8 @@ def explain_model(gnn_model, graph, labels, test_idx):
     Parameters:
     - gnn_model: The trained GNN model.
     - graph: The input graph.
+    - labels: The labels for ground truth
+     - test_idx: The test index to get prediction
 
     Returns:
     - None
@@ -166,7 +168,7 @@ def explain_model(gnn_model, graph, labels, test_idx):
 
     store_dict = {}
     for idx in range(1, 10):
-        i = random.randint(9188, 9525)
+        i = random.randint(th.min(test_idx), th.max(test_idx))
         print("Selected node index", i)
         node_prediction = prediction[i]
         print("PREDICTION :", node_prediction)

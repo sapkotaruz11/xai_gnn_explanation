@@ -57,4 +57,11 @@ def get_dataset(args):
 
     val_idx = train_idx[: len(train_idx) // 5]
     train_idx = train_idx[len(train_idx) // 5:]
+    # use_cuda = args.gpu >= 0 and th.cuda.is_available()
+    # if use_cuda:
+    #     th.cuda.set_device(args.gpu)
+    #     g = g.to("cuda:%d" % args.gpu)
+    #     labels = labels.cuda()
+    #     train_idx = train_idx.cuda()
+    #     test_idx = test_idx.cuda()
     return g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category
