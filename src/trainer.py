@@ -5,7 +5,7 @@ from src.models import NodeClassifier
 import torch.nn.functional as F
 
 
-def gnn_trainer(args):
+def gnn_trainer(g, num_classes, train_idx, val_idx,category,labels, args):
     """
     Train a Graph Neural Network (GNN) model for node classification.
 
@@ -17,8 +17,7 @@ def gnn_trainer(args):
     - g: The input graph used for training.
 
     """
-    g, num_classes, train_mask, test_mask, train_idx, val_idx, test_idx, labels, category_id, category = get_dataset(
-        args)
+
 
     n_hidden = args.n_hidden
     num_bases = -1
@@ -76,4 +75,4 @@ def gnn_trainer(args):
                 )
             )
 
-    return gnn_model, g
+    return gnn_model

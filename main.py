@@ -27,7 +27,7 @@ def get_args():
         '-n', '--dataset_name', default='mutag', type=str, required=False,
         help='mutag')
     parser.add_argument(
-        '-e', '--n_epochs', default=10, type=int, required=False)
+        '-e', '--n_epochs', default=75, type=int, required=False)
     parser.add_argument(
         '-lr', '--lr', default=0.01, type=float, required=False)
     parser.add_argument(

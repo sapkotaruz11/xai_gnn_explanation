@@ -3,3 +3,4 @@ torch
 torch-geometric
 matplotlib
 rdflib
+torchmetrics
