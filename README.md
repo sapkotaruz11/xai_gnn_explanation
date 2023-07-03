@@ -67,6 +67,12 @@ To print evaluation metrics:
 python main.py --print_metrics True
 ```
 
+To print for a single node index only
+
+```
+python main.py --node_index 1
+```
+
 ## License
 
 This program is licensed under the [MIT License](LICENSE).

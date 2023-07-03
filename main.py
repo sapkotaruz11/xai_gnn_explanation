@@ -1,11 +1,11 @@
-
 from src.explainer import gnn_explainer
 import argparse
 
 
 def get_args():
     '''
-    Parses the command-line arguments using parser.parse_args(), which returns an args object containing the parsed arguments.
+    Parses the command-line arguments using parser.parse_args(),
+    which returns an args object containing the parsed arguments.
     
     Arguments include:
     dataset_name(str):         Specifies the dataset name (default: 'mutag').
@@ -16,6 +16,9 @@ def get_args():
     num_hidden_layers(int):    Specifies the number of hidden layers in the model (default: 3).
     mode(str):                 Specifies the mode of operation (default: 'train').
     explain(bool):             Specifies whether to enable explanation of node classification (default: True).
+    explain_graph(bool):       Specifies whether to enable explanation of whole graph (default: True).
+    print_metrics(bool):       Specifies whether to print evaluation metrics (default: True).
+    node_index(int):           Specifies which node index to explain
 
     Returns the args object.'''
 
