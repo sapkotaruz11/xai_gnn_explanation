@@ -1,5 +1,6 @@
 import os
 import random
+from copy import copy
 
 import dgl
 import torch.nn as nn
@@ -131,6 +132,44 @@ def get_prediction(gnn_model, graph, feat, category, **kwargs):
     return pred_label
 
 
+def visualize(sg, node_index, node_mask, edge_mask):
+    sg_homo = dgl.to_homogeneous(sg)
+    G = dgl.to_networkx(sg_homo)
+    nodes_dict = {}
+    print(sg.num_nodes)
+    count_i = 0
+    for node_type in sg.ntypes:
+        nodes = sg.nodes(node_type)
+        for node_id in nodes:
+            # Process the node
+            nodes_dict[count_i] = node_type
+            count_i += 1
+
+    # Visualize the subgraph using NetworkX and Matplotlib
+    plt.figure(figsize=[15, 7])
+
+    nodes = G.nodes()
+    edges = G.edges()
+    original_edge = {}
+    for edge_i in edges:
+        new_edge = (nodes_dict[edge_i[0]], nodes_dict[edge_i[1]])
+        for edge_mask_k, edge_mask_v in edge_mask.items():
+            if len(edge_mask_v)>0:
+                if (new_edge[0] == edge_mask_k[0]) and (new_edge[1] == edge_mask_k[-1]):
+                    original_edge[edge_i] =edge_mask_v[0].item()
+                    edge_mask[edge_mask_k] = edge_mask_v[1:]
+
+    nx.set_node_attributes(G, nodes_dict, "label")
+    node_colors = ['b' for node in nodes]
+    edge_colors = ['r' if edge >0.5 else 'b' for edge in original_edge.values()]
+    # node_colors = ['b' for node in nodes]
+    # edge_colors = ['b' for edge in edges]
+
+    pos = nx.spring_layout(G)
+    nx.draw_networkx(G, pos=pos, node_color=node_colors, edge_color=edge_colors, with_labels=False)
+    plt.savefig("data/path2_{}.png".format(node_index))
+    print("Saving file ", node_index)
+
 def explain_model(model, g, test_idx, labels, category, args):
     node_index = args.node_index
     print_metrics = args.print_metrics
@@ -173,37 +212,26 @@ def explain_model(model, g, test_idx, labels, category, args):
                                                                       **{'explain_node': True})
         print("EXPLAIN NODE FEAT MASK", feat_mask)
         print("EXPLAIN NODE EDGE MASK", edge_mask)
+        visualize(sg, node_index, feat_mask, edge_mask)
 
     else:
         for idx in range(10):
 
             # Randomly select a node index from the test data
-            i = random.randint(th.min(test_idx), th.max(test_idx))
-            print("Selected node index", i)
-            node_prediction = prediction[i]
+            node_index = random.randint(th.min(test_idx), th.max(test_idx))
+            print("Selected node index", node_index)
+            node_prediction = prediction[node_index]
             print("PREDICTION :", node_prediction)
 
             # Explain the node
-            new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, i, g, feat,
+            new_center, sg, feat_mask, edge_mask = explainer.explain_node(category, node_index, g, feat,
                                                                           **{'explain_node': True})
             print("EXPLAIN NODE FEAT MASK", feat_mask)
             print("EXPLAIN NODE EDGE MASK", edge_mask)
 
             # Convert the subgraph to a homogeneous graph using DGL
-            sg_homo = dgl.to_homogeneous(sg)
-            G = dgl.to_networkx(sg_homo)
+            visualize(sg, node_index, feat_mask, edge_mask)
 
-            # Visualize the subgraph using NetworkX and Matplotlib
-            plt.figure(figsize=[15, 7])
-
-            nodes = G.nodes()
-            edges = G.edges()
-            node_colors = ['b' for node in nodes]
-            edge_colors = ['r' if edge in edge_mask else 'b' for edge in edges]
-
-            pos = nx.spring_layout(G)
-            nx.draw_networkx(G, pos=pos, node_color=node_colors, edge_color=edge_colors, with_labels=False)
-            plt.savefig("data/path2_{}.png".format(i))
 
 
 def gnn_explainer(args):
